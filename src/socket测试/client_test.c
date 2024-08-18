@@ -26,27 +26,6 @@ int main()
         perror("connect failed");
         exit(0);
     }
-    // //设置监听
-    // ret=listen(fd, 128);
-    // if(ret==-1)
-    // {
-    //     perror("listen failed");
-    //     exit(0);
-    // }
-    // //等待客户端连接
-    // struct sockaddr_in cli_addr;
-    // int cli_len=sizeof(cli_addr);
-    // int cfd=accept(fd, (struct sockaddr*)&cli_addr, &cli_len);
-    // if(cfd==-1)
-    // {
-    //     perror("accept failed");
-    //     exit(0);
-    // }
-    // //输出客户端信息
-    // char cli_ip[24]={0};
-    // printf("客户端ip:%s,端口:%d\n",
-    //         inet_ntop(AF_INET, &cli_addr.sin_addr.s_addr, cli_ip, sizeof(cli_ip)),
-    //         ntohs(cli_addr.sin_port));
 
     //与服务器端通信
     int number=0;
