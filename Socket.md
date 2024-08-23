@@ -1,3 +1,4 @@
+# 通信流程
 # 字节序
 
 ## 大端
@@ -23,6 +24,7 @@ ntohs表示"network to host short"，即将短整型网络字节序转换为主�
 其中，长整型的两个函数通常用来转换ip地址，
 短整型通常用来转换端口号。
 # ip地址转换
+## 只能转换ipv4的
 为了更好的可读性，一般会将ip地址转换为字符串格式，比如点分十进制的ipv4地址，十六进制的ipv6地址。而在代码内部进行参数传递或者计算时，则又需要整数类型，所以需要一些函数来将ip地址在这两种类型之间进行转换。
 ```c
 #include<arpa/inet.h>
@@ -42,19 +44,29 @@ char*szValue2=inet_ntoa("10.194.71.60");
 printf("address 1:%s\n",szValue1); 
 printf("address 2:%s\n",szValue2);
 ```
+## ipv4与ipv6通用
+使用的头文件同上`<arpa/inet.h>`
 
 主机字节序转网络字节序：
-
 ```c
-int inet_pton(int af, const char *src, void *dst);
+int inet_pton(int af, const char* src, void* dst);
 ```
+`af`参数用于指定地址族，`AF_INET`为ipv4，`AF_INET6`为ipv6。
+`src`则是要转换的ip地址的字符串。
+`dst`则是转换结果的存储位置。
+执行成功返回1，失败返回0并设置errno
 
 网络字节序转主机字节序：
-
 ```c
-const char *inet_ntop(int af, const void *src, char *dst, socklen_t size);
+const char* inet_ntop(int af, const void* src, char* dst, socklen_t size);
 ```
-
+`inet_ntop`前三个参数同上，`size`参数指定结果存储内存的大小，可以直接使用以下宏值：
+```c
+#include<net/in.h>
+#define INET_ADDRSTRLEN 16    //对应ipv4
+#define INET6_ADDRSTRLEN 46   //对应ipv6
+```
+执行成功返回结果存储内存的地址，失败返回NULL并设置errno
 # 通用socket地址
 ## sockaddr
 sockaddr是一种结构体，用于表示socket地址，数据结构定义：
@@ -176,4 +188,32 @@ ssize_t send(int fd, const void *buf, size_t len, int flags);
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 ```
 
-# 通信流程
+# 网络信息API
+```c
+#include<netdb.h>
+//根据主机名获取主机完整信息
+struct hostent*gethostbyname(const char*name);
+//根据ip地址获取主机完整信息
+struct hostent*gethostbyaddr(const void*addr,size_t len,int type);
+
+//根据名称获取服务完整信息
+struct servent*getservbyname(const char*name,const char*proto); 
+//根据端口获取服务完整信息
+struct servent*getservbyport(int port,const char*proto);
+
+//既能通过主机名获取ip地址，也能通过服务名获取端口号
+int getaddrinfo(const char*hostname,const char*service,
+				const struct addrinfo*hints,struct addrinfo**result);
+
+//通过socket地址同时获取字符串形式的主机名和服务名
+int getnameinfo(const struct sockaddr*sockaddr,
+				socklen_t addrlen,char*host,socklen_t hostlen,char*serv,
+				socklen_t servlen,int flags);
+```
+# 高级I/O函数
+## 创建文件描述符
+### pipe
+```c
+#include<unistd.h>
+int pipe(int fd[2]);
+```
