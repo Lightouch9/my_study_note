@@ -213,7 +213,55 @@ int getnameinfo(const struct sockaddr*sockaddr,
 # 高级I/O函数
 ## 创建文件描述符
 ### pipe
+创建管道
 ```c
 #include<unistd.h>
 int pipe(int fd[2]);
+```
+### dup/dup2
+文件描述符复制重定向
+```c
+#include<unistd.h>
+int dup(int file_descriptor);
+int dup2(int file_descriptor_one, int file_descriptor_two);
+```
+### readv/writev
+数据分散读，集中写
+```c
+#include<sys/uio.h>
+ssize_t readv(int fd, const struct iovec* vector, int count);
+ssize_t writev(int fd, const struct iovec* vector, int count);
+```
+### sendfile
+在两个文件描述符之间直接传递数据
+```c
+#include<sys/sendfile.h>
+ssize_t sendfile(int out_fd, int in_fd, off_t* offset, size_t count);
+```
+`out_fd`必须是指向真实文件，`in_fd`必须是socket
+### mmap/munmap
+申请与释放内存空间
+```c
+#include<sys/mman.h>
+void* mmap(void* start, size_t length, int prot, int flags, int fd, off_t offset);
+int munmap(void* start, size_t length);
+```
+### splice
+在两个文件描述符之间移动数据，零拷贝
+```c
+#include<fcntl.h>
+ssize_t splice(int fd_in, loff_t* off_in, int fd_out, loff_t* off_out, size_t len,
+			   unsigned int flags);
+```
+### tee
+在两个管道文件描述符之间复制数据，零拷贝
+```c
+#include<fcntl.h>
+ssize_t tee(int fd_in, int fd_ot, size_t len, unsigned int flags);
+```
+### fcntl
+file control，提供对文件描述符的各种控制操作
+```c
+#include<fcntl.h>
+int fcntl(int fd, int cmd,...);
 ```
