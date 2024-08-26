@@ -225,6 +225,7 @@ int pipe(int fd[2]);
 int dup(int file_descriptor);
 int dup2(int file_descriptor_one, int file_descriptor_two);
 ```
+## 读写数据函数
 ### readv/writev
 数据分散读，集中写
 ```c
@@ -259,9 +260,33 @@ ssize_t splice(int fd_in, loff_t* off_in, int fd_out, loff_t* off_out, size_t le
 #include<fcntl.h>
 ssize_t tee(int fd_in, int fd_ot, size_t len, unsigned int flags);
 ```
+## 控制I/O行为与属性的函数
 ### fcntl
 file control，提供对文件描述符的各种控制操作
 ```c
 #include<fcntl.h>
 int fcntl(int fd, int cmd,...);
 ```
+# 其他
+## 改变工作目录和根目录
+获取当前工作目录和改变工作目录
+```c
+#include<unistd.h>
+//获取当前工作目录
+char* getcwd(char* buf, size_t size);
+//改变工作目录
+int chdir(const char* path);
+```
+改变进程根目录，特权进程才能改变根目录
+```c
+#include<unistd.h>
+int chroot(const char* path);
+```
+## 程序后台化
+```c
+#include<unistd.h>
+int daemon(int nochdir, int noclose);
+```
+# 服务器模型
+## C/S
+## P2P
