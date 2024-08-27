@@ -71,7 +71,7 @@ const char* inet_ntop(int af, const void* src, char* dst, socklen_t size);
 ## sockaddr
 sockaddr是一种结构体，用于表示socket地址，数据结构定义：
 ```c
-#include＜bits/socket.h＞ 
+#include<bits/socket.h> 
 struct sockaddr 
 { 
 	sa_family_t sa_family; 
@@ -95,7 +95,7 @@ AF_INET6:端口号2字节，流标识4字节，ip地址16字节，范围ID4字�
 ## sockaddr_storage
 可以看出`sockaddr`的`sa_data`成员的14字节的大小并不能完全满足所有的协议族，所以Linux中定义了新的通用socket地址结构体：
 ```c
-#include＜bits/socket.h＞ 
+#include<bits/socket.h>
 struct sockaddr_storage 
 { 
 	sa_family_t sa_family; 
@@ -108,7 +108,7 @@ struct sockaddr_storage
 但是以上两个通用socket地址结构体在获取与设置上涉及繁琐的位操作，于是Linux中提供了用于各个协议族的专用socket地址结构体。
 ## UNIX本地域协议族`sockaddr_un`
 ```c
-#include＜sys/un.h＞ 
+#include<sys/un.h>
 struct sockaddr_un 
 { 
 	sa_family_t sin_family;/*地址族：AF_UNIX*/ 
