@@ -313,3 +313,13 @@ I/O复用
 异步线程用于处理I/O事件，相当于I/O处理单元。
 ## 领导者/追随者
 # 有限状态机
+http请求分析
+# I/O复用
+同时监听多个文件描述符
+## select
+在一段指定的时间内，监听用户感兴趣的文件描述符上的可读、可写、异常事件
+```c
+#include<sys/select.h>
+int select(int nfds,fd_set* readfds,fd_set* writefds,fd_set* exceptfds,
+		   struct timeval* timeout)
+```
