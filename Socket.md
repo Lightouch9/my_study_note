@@ -337,10 +337,12 @@ typedef long int__fd_mask;
 #define __NFDBITS(8*(int)sizeof(__fd_mask)) 
 typedef struct 
 { 
-#ifdef__USE_XOPEN __fd_mask fds_bits[__FD_SETSIZE/__NFDBITS]; #define__FDS_BITS(set)((set)->fds_bits) 
+#ifdef __USE_XOPEN 
+__fd_mask fds_bits[__FD_SETSIZE/__NFDBITS]; 
+#define __FDS_BITS(set)((set)->fds_bits) 
 #else 
-__fd_mask__fds_bits[__FD_SETSIZE/__NFDBITS]; 
-#define__FDS_BITS(set)((set)->__fds_bits) 
+__fd_mask __fds_bits[__FD_SETSIZE/__NFDBITS]; 
+#define __FDS_BITS(set)((set)->__fds_bits) 
 #endif 
 }fd_set;
 ```
