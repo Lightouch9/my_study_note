@@ -317,9 +317,49 @@ http请求分析
 # I/O复用
 同时监听多个文件描述符
 ## select
-在一段指定的时间内，监听用户感兴趣的文件描述符上的可读、可写、异常事件
+在一段指定的时间内，监听多个文件描述符上的状态变化（可读、可写、异常事件）。
+`select`可以减少程序的I/O等待时间，因为它允许程序在等待一个文件描述符变为就绪状态时，同时处理其他文件描述符的I/O操作。
 ```c
 #include<sys/select.h>
 int select(int nfds,fd_set* readfds,fd_set* writefds,fd_set* exceptfds,
 		   struct timeval* timeout)
+```
+- `nfds`：指定被监听的文件描述符的总数，通常设置为`select`监听的所有文件描述符中的最大值加1，因为文件描述符是从0开始计数的。
+- `readfds`,`writefds`,`exceptfds`：分别指向可读、可写、异常事件对应的文件描述符集合`fd_set`。`select`调用返回时会修改这3个参数来通知程序哪些文件描述符已经就绪。
+```c
+//fd_set结构体定义
+#include<typesizes.h＞>
+#define __FD_SETSIZE 1024 
+#include<sys/select.h>
+#define FD_SETSIZE __FD_SETSIZE 
+typedef long int__fd_mask; 
+#undef __NFDBITS 
+#define __NFDBITS(8*(int)sizeof(__fd_mask)) 
+typedef struct 
+{ 
+#ifdef__USE_XOPEN __fd_mask fds_bits[__FD_SETSIZE/__NFDBITS]; #define__FDS_BITS(set)((set)->fds_bits) 
+#else 
+__fd_mask__fds_bits[__FD_SETSIZE/__NFDBITS]; 
+#define__FDS_BITS(set)((set)->__fds_bits) 
+#endif 
+}fd_set;
+```
+`fd_set`中通过一个整形数组记录文件描述符集合，容量大小由`FD_SETSIZE`指定，限制了`select`同时处理的文件描述符的总量。
+- `timeout`：用来设置`select`函数的超时时间，类型为指向`timeval`结构类型的指针。`timeval`结构体定义如下：
+```c
+struct timeval
+{
+	//秒
+	long tv_sec;
+	//微秒
+	long tv_usec;
+}
+```
+由此可见`select`调用的超时等待可以精确到微秒级，如果`tv_sec`与`tv_usec`均设置为0，则`select`立即返回，而如果给`timeout`传入NULL，则`select`会一直阻塞，直到某个文件描述符就绪。
+`select`执行成功返回就绪的文件描述符的总数，执行失败返回-1并设置errno，如果`select`在等待的期间接收到信号，则立即返回-1并设置errno为`EINTR`。
+## poll
+在指定时间内轮询一定数量的文件描述符，检测其中是否由就绪的。
+```c
+#include<poll.h>
+int poll(struct pollfd* fds, nfds_t nfds, int timeout);
 ```
