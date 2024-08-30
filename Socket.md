@@ -337,12 +337,10 @@ typedef long int__fd_mask;
 #define __NFDBITS(8*(int)sizeof(__fd_mask)) 
 typedef struct 
 { 
-#ifdef __USE_XOPEN 
-__fd_mask fds_bits[__FD_SETSIZE/__NFDBITS]; 
-#define __FDS_BITS(set)((set)->fds_bits) 
+#ifdef__USE_XOPEN __fd_mask fds_bits[__FD_SETSIZE/__NFDBITS]; #define__FDS_BITS(set)((set)->fds_bits) 
 #else 
-__fd_mask __fds_bits[__FD_SETSIZE/__NFDBITS]; 
-#define __FDS_BITS(set)((set)->__fds_bits) 
+__fd_mask__fds_bits[__FD_SETSIZE/__NFDBITS]; 
+#define__FDS_BITS(set)((set)->__fds_bits) 
 #endif 
 }fd_set;
 ```
@@ -365,3 +363,46 @@ struct timeval
 #include<poll.h>
 int poll(struct pollfd* fds, nfds_t nfds, int timeout);
 ```
+## epoll
+Linux特有的I/O复用函数，使用一组函数完成任务，`epoll`把用户关心的文件描述符上的事件放在内核里的一 个事件表中，无需每次调用都传入文件描述符集或事件集，但需要传入一个标识这个事件表的文件描述符。
+### epoll_create
+创建事件表的文件描述符（创建`epoll`实例）：
+```c
+#include<sys/epoll.h>
+int epoll_create(int size);
+```
+`size`用于提示内核事件表的大小，即此`epoll`实例所监听的文件描述符的数量上限，但通常此参数会被忽略，只需传入一个大于0的数即可。
+执行成功会返回新创建的文件描述符，失败返回-1并设置errno。
+### epoll_ctl
+`epoll_ctl`用于操作`epoll`实例的内核事件表（由`epoll_create`返回）
+```c
+#include<sys/epoll.h>
+int epoll_ctl(int epfd, int op, int fd, struct epoll_event* event);
+```
+- `epfd`：`epoll`实例的文件描述符
+- `fd`：要操作的文件描述符
+- `op`：操作类型，如下：
+	- `EPOLL_CTL_ADD`：添加，向事件表中注册`fd`上的事件
+	- `EPOLL_CTL_MOD`：修改，修改`fd`上的注册事件
+	- `EPOLL_CTL_DEL`：删除，删除`fd`上的注册事件
+- `event`：指定要关注的事件，其数据类型为指向`epoll_event`结构体的指针。
+```c
+//epoll_event
+struct epoll_event
+{
+	//epoll事件类型
+	__uint32_t events;
+	//用户数据
+	epoll_data_t data;
+}
+```
+`epoll_ctl`执行成功返回0，失败返回-1并设置errno。
+### epoll_wait
+在一段指定的超时时间内返回就绪的文件描述符。
+```c
+#include<sys/epoll.h>
+int epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout);
+```
+当`epoll_wait`检测到事件就会将所有就绪的事件从`epfd`指定的内核事件表中复制到`events`指向的用于存放就绪事件的数组中，这个数组只用于输出`epoll_wait`检测到的就绪事件。
+`maxevents`指定最多监听的事件的数量，即`events`数组的大小，
+`timeout`指定超时时间，与`poll`的`timeout`参数含义相同。
