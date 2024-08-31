@@ -406,3 +406,6 @@ int epoll_wait(int epfd, struct epoll_event* events, int maxevents, int timeout)
 当`epoll_wait`检测到事件就会将所有就绪的事件从`epfd`指定的内核事件表中复制到`events`指向的用于存放就绪事件的数组中，这个数组只用于输出`epoll_wait`检测到的就绪事件。
 `maxevents`指定最多监听的事件的数量，即`events`数组的大小，
 `timeout`指定超时时间，与`poll`的`timeout`参数含义相同。
+#### 工作模式LT与ET
+LT(Level Trigger)，默认的工作模式，在此工作模式下当`epoll_wait`检测到文件描述符就绪并将其通知应用程序后，除非应用程序处理该事件，否则每次调用`epoll_wait`时都会向应用程序返回就绪的文件描述符。
+ET(Edge Trigger)，此工作模式下，当检测到事件发生时只会通知应用程序一次，这要求应用程序必须立即处理该事件，因为后面不再通知该事件。同时要使用**非阻塞式**I/O操作。所以ET模式相对于LT模式能够降低同一个事件被`epoll`重复触发的次数，提高效率。
