@@ -141,7 +141,7 @@ struct in6_addr
 	unsigned char sa_addr[16];/*IPv6地址，要用网络字节序表示*/ 
 };
 ```
-所有的专用socket地址类型以及通用socket地址类型`sockaddr_storage`在使用时需要强制转换为通用socket地址类型`sockaddr`，因为所有socket编程接口使用的地址参数类型都是`sockaddr`。
+所有的专用socket地址类型以及通用socket地址类型`sockaddr_storage`在使用时需要**强制转换为通用socket地址类型`sockaddr`**，因为所有socket编程接口使用的地址参数类型都是`sockaddr`。
 # 套接字
 
 套接字创建，返回值是文件描述符，通过该描述符操作内核中的一块内存，用于网络通信。：
@@ -357,13 +357,38 @@ struct timeval
 ```
 由此可见`select`调用的超时等待可以精确到微秒级，如果`tv_sec`与`tv_usec`均设置为0，则`select`立即返回，而如果给`timeout`传入NULL，则`select`会一直阻塞，直到某个文件描述符就绪。
 `select`执行成功返回就绪的文件描述符的总数，执行失败返回-1并设置errno，如果`select`在等待的期间接收到信号，则立即返回-1并设置errno为`EINTR`。
+
 ## poll
 在指定时间内轮询一定数量的文件描述符，检测其中是否由就绪的。
 ```c
 #include<poll.h>
 int poll(struct pollfd* fds, nfds_t nfds, int timeout);
 ```
+- `fds`是一个`pollfd`类型的数组，用于指定需要监听的文件描述符上的事件，`pollfd`定义如下：
+
+  ```c
+  /* Data structure describing a polling request.  */
+  struct pollfd
+    {
+      int fd;			/* 要监听的文件描述符  */
+      short int events;		/* 要关注的事件  */
+      short int revents;		/* 实际发生的事件，此项由内核填充  */
+    };
+  ```
+
+- `nfds`指定`fds`数组的大小，`nfds_t`类型定义如下：
+
+  ```c
+  /* Type used for the number of file descriptors.  */
+  typedef unsigned long int nfds_t;
+  ```
+
+- `timeout`指定监听超时时间，单位毫秒，`timeout`为-1时，`poll`则在监听的时间发生前都将阻塞，`timeout`为0时，`poll` 将立即返回。
+
+- `poll`的返回值同`select`。
+
 ## epoll
+
 Linux特有的I/O复用函数，使用**一组函数**完成任务，`epoll`把用户关心的文件描述符上的事件放在内核里的一个事件表中，无需每次调用都传入文件描述符集或事件集，降低了内核空间与用户空间之间数据的拷贝开销，但需要传入一个标识这个事件表的文件描述符。
 ### epoll_create
 创建事件表的文件描述符（创建`epoll`实例）：
@@ -375,6 +400,7 @@ int epoll_create(int size);
 执行成功会返回新创建的文件描述符，失败返回-1并设置errno。
 ### epoll_ctl
 `epoll_ctl`用于操作`epoll`实例的内核事件表（由`epoll_create`返回）
+
 ```c
 #include<sys/epoll.h>
 int epoll_ctl(int epfd, int op, int fd, struct epoll_event* event);
@@ -440,3 +466,199 @@ ET(Edge Trigger)，此工作模式下，当检测到事件发生时只会通知�
 - `epoll_wait`则采用回调的方式，在检测到就绪的文件描述符时会将就绪的文件描述符上的事件插入到内核的就绪事件队列中，内核则将此队列中的内容拷贝到用户空间中，所以`epoll_wait`无需轮询所有事件，事件复杂度为O(1)。
 
 但是当连接较多并且活动频繁时，`epoll_wait`未必比`select`和`poll`效率高，因为`epoll_wait`的回调函数触发的太频繁。
+
+## I/O复用的应用：网络聊天室
+
+此应用示例通过`poll` 为例实现一个简单的网络聊天室，利用I/O 复用技术同时处理网络连接和用户输入，实现所有用户同时在线群聊。
+
+### 客户端程序
+
+客户端程序需要实现两个功能：
+
+- 从标准输入终端读入用户数据并将用户的数据发送到服务器
+- 向标准输出终端打印从服务器接受到的数据
+
+使用`poll`同时监听用户输入和网络连接，并利用`splice`将用户输入的内容直接定向到网络连接上发送，实现数据零拷贝，提高效率。
+
+#### 头文件包含
+
+```c
+#define _GNU_SOURCE 1
+#include<sys/types.h>
+#include<sys/socket.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
+#include<assert.h>
+#include<stdio.h>
+#include<unistd.h>
+#include<string.h>
+#include<stdlib.h>
+#include<poll.h>
+#include<fcntl.h>
+#include<libgen.h>
+```
+
+`#define _GNU_SOURCE 1`定义宏，启用GNU扩展。
+
+这里包含了多种标准和`POSIX`头文件，用于网络编程、I/O操作、错误处理等。
+
+#### 宏定义
+
+```c
+#define BUFFER_SIZE 64
+```
+
+定义一个大小为64字节的缓冲区。
+
+#### 主函数
+
+```c
+int main(int argc, char* argv[]){}
+```
+
+程序执行入口，同时接受命令行参数。
+
+#### 命令行参数检查
+
+```c
+if(argc<=2)
+{
+    printf("usage: %s ip_address port_number\n", basename(argv[0]));
+    return 1;
+}
+```
+
+检查程序通过命令行执行时是否提供了必要的参数，服务器ip地址与端口。
+
+#### 设置服务器ip地址与端口
+
+```c
+//设置服务器ip与端口，从命令行读取
+const char* ip=argv[1];
+int port=atoi(argv[2]);
+//创建存储服务器地址的结构体
+struct sockaddr_in server_address;
+//清空刚创建的server_address的内存块
+bzero(&server_address, sizeof(server_address));
+//设置地址族、ip、端口
+server_address.sin_family=AF_INET;
+inet_pton(AF_INET, ip, &server_address.sin_addr);
+server_address.sin_port=htons(port);
+```
+
+> `atoi`函数(`<stdlib.h>`)`int atoi(const char* str)`用于将`str`指向的字符串转换为一个`int`整数。
+>
+> `bzero`函数(`<string.h>`)`void bzero(void* s, int n)`用于将`s`指向的内存块的前`n`个字节清零。
+
+#### 创建套接字并连接
+
+```c
+//创建套接字
+int sockfd=socket(AF_INET, SOCK_STREAM, 0);
+assert(sockfd>=0);
+if(connect(sockfd, (struct sockaddr*)&server_address, sizeof(server_address))<0)
+{
+    //如果连接失败打印错误信息
+    printf("连接服务器失败。。。\n");
+    close(sockfd);
+    return 1;
+}
+```
+
+> `assert`用来设置断言，位于`<assert.h>`中，`assert()`会检查传入的表达式是否为真或非零，为真则不做任何操作，为假或为零则显示错误信息并终止程序运行，一般在程序的开发和测试阶段进行逻辑错误的检查，不应用于正常的错误或异常处理。
+
+#### 设置`poll`
+
+```c
+//设置pollfd用于poll
+struct pollfd fds[2];
+//注册文件描述符0，监听标准输入的可读事件
+fds[0].fd=0;
+fds[0].events=POLLIN;
+fds[0].revents=0;
+//注册文件描述符1，监听用于网络通信的文件描述符的可读与关闭事件
+fds[1].fd=sockfd;
+fds[1].events=POLLIN | POLLRDHUP;
+fds[1].revents=0;
+```
+
+创建`pollfd`数组，监听标准输入与网络通信的套接字。
+
+#### 创建管道
+
+```c
+//创建管道
+int pipefd[2];
+int ret=pipe(pipefd);
+//设置断言
+assert(ret!=-1);
+```
+
+#### 核心循环
+
+这个循环持续处理网络连接和用户输入，直到发生错误或连接关闭。
+
+```c
+//创建读缓冲区
+char read_buf[BUFFER_SIZE];
+//核心循环
+while(1)
+{
+    //阻塞监听标准输入与网络套接字
+    ret=poll(fds, 2, -1);
+    //执行错误，退出循环
+    if(ret<0)
+    {
+        printf("poll监听错误。。。\n");
+        break;
+    }
+    //处理服务器关闭套接字
+    if(fds[1].revents & POLLRDHUP)
+    {
+        printf("服务器端关闭了连接。。。\n");
+        break;
+    }
+    //处理服务器套接字是有数据可读，即服务器发送了数据
+    else if(fds[1].revents & POLLIN)
+    {
+        //将读缓冲区清零，确保缓冲区没有干扰数据
+        memset(read_buf, '\0', BUFFER_SIZE);
+        //接受数据到缓冲区中
+        recv(fds[1].fd, read_buf, BUFFER_SIZE-1, 0);
+        //输出接收到的数据
+        printf("%s\n", read_buf);
+    }
+    //处理用户输入事件
+    if(fds[0].revents & POLLIN)
+    {
+        ret=splice(0, NULL, pipefd[1], NULL, 32768, SPLICE_F_MORE | SPLICE_F_MOVE);
+        //若传输的数据量小于0，则出现了错误
+        if(ret<0)
+        {
+            perror("splice");
+            break;
+        }
+        //从管道的读端将数据写入sockfd发送给服务器
+        ret=splice(pipefd[0], NULL, sockfd, NULL, 32768, SPLICE_F_MORE | SPLICE_F_MOVE);
+        //若传输的数据量小于0，则出现了错误
+        if(ret<0)
+        {
+            perror("splice");
+            break;
+        }
+    }
+}
+```
+
+- 从网络套接字`sockfd`接受数据并读入缓冲区`read_buf`中时，读取的数据量的大小为`BUFFER_SIZE-1`，保留1个字节用于字符串的结束符`\0`。
+- `splice`第一次调用时`splice(0, NULL, pipefd[1], NULL, 32768, SPLICE_F_MORE | SPLICE_F_MOVE);`，将数据从标准输入（文件描述符0）读取到管道的写端`pipefd[1]`，`32768`是尝试传输的字节数，标志位设置的`SPLICE_F_MORE`表示可能会有更多的数据传输，`SPLICE_F_MOVE`表示要尽可能的减少数据拷贝。
+- `splice`第二次调用`ret=splice(pipefd[0], NULL, sockfd, NULL, 32768, SPLICE_F_MORE | SPLICE_F_MOVE);`，将数据从管道的读端`pipefd[0]`写入到套接字`sockfd`中，即发送给服务器。
+
+#### 关闭套接字
+
+```c
+//关闭套接字
+close(sockfd);
+return 0;
+```
+
