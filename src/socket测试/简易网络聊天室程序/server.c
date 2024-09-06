@@ -103,7 +103,7 @@ int main(int argc, char* argv[])
         for(int i=0;i<user_counter+1;++i)
         {
             //当有新连接请求时
-            if((fds[i].fd=listenfd)&&(fds[i].events&POLLIN))
+            if((fds[i].fd==listenfd)&&(fds[i].revents&POLLIN))
             {
                 //接受新连接，创建与客户端通信的套接字
                 struct sockaddr_in client_address;
