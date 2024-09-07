@@ -969,3 +969,134 @@ close(listenfd);
 return 0;
 ```
 
+# 信号
+
+在Linux中信号是消息处理机制的一种，由用户、系统或者进程发送给目标进程的信息，已通知目标进程某个状态的改变或系统异常。
+
+## 信号的状态
+
+- 产生：键盘输入、函数调用、执行shell命令、对硬件进行非法访问等都会产生信号。
+- 未决：当信号产生后但还未被处理，此时信号处于未决状态。
+- 递达：信号被处理。
+
+## 信号编号
+
+信号的本质其实也是整型数，每个不同的取值代表了不同的信号，在Linux中可以通过shell命令`kill -l`查看系统定义的信号列表：
+
+```
+ubuntu16@ubuntu16:~/ubuntu16/project$ kill -l
+ 1) SIGHUP       2) SIGINT       3) SIGQUIT      4) SIGILL       5) SIGTRAP
+ 6) SIGABRT      7) SIGBUS       8) SIGFPE       9) SIGKILL     10) SIGUSR1
+11) SIGSEGV     12) SIGUSR2     13) SIGPIPE     14) SIGALRM     15) SIGTERM
+16) SIGSTKFLT   17) SIGCHLD     18) SIGCONT     19) SIGSTOP     20) SIGTSTP
+21) SIGTTIN     22) SIGTTOU     23) SIGURG      24) SIGXCPU     25) SIGXFSZ
+26) SIGVTALRM   27) SIGPROF     28) SIGWINCH    29) SIGIO       30) SIGPWR
+31) SIGSYS      34) SIGRTMIN    35) SIGRTMIN+1  36) SIGRTMIN+2  37) SIGRTMIN+3
+38) SIGRTMIN+4  39) SIGRTMIN+5  40) SIGRTMIN+6  41) SIGRTMIN+7  42) SIGRTMIN+8
+43) SIGRTMIN+9  44) SIGRTMIN+10 45) SIGRTMIN+11 46) SIGRTMIN+12 47) SIGRTMIN+13
+48) SIGRTMIN+14 49) SIGRTMIN+15 50) SIGRTMAX-14 51) SIGRTMAX-13 52) SIGRTMAX-12
+53) SIGRTMAX-11 54) SIGRTMAX-10 55) SIGRTMAX-9  56) SIGRTMAX-8  57) SIGRTMAX-7
+58) SIGRTMAX-6  59) SIGRTMAX-5  60) SIGRTMAX-4  61) SIGRTMAX-3  62) SIGRTMAX-2
+63) SIGRTMAX-1  64) SIGRTMAX
+```
+
+## 信号处理行为
+
+Linux中的man文档中介绍了对产生的信号的五种默认处理动作：
+
+```
+Term   Default action is to terminate the process.
+Ign    Default action is to ignore the signal.
+Core   Default action is to terminate the process and dump core (see core(5)).
+Stop   Default action is to stop the process.
+Cont   Default action is to continue the process if it is currently stopped.
+```
+
+中文说明：
+
+```
+Term:进程终止
+Ign:忽略信号
+Core:进程终止并生成一个core文件(一般用于gdb调试)
+Stop:进程暂停
+Cont:使暂停的进程继续运行
+```
+
+man文档中有提及:
+
+```
+The signals SIGKILL and SIGSTOP cannot be caught, blocked, or ignored.
+信号SIGKILL(9号信号),信号SIGSTOP(19号)不能被捕捉、阻塞或忽略。
+SIGKILL:无条件杀死进程
+SIGSTOP:无条件暂停进程
+```
+
+
+
+## 相关函数
+
+### 发送信号
+
+#### `kill`
+
+给指定进程发送信号
+
+```c
+#include<sys/types.h>
+#include<signal.h>
+int kill(pid_t pid, int sig);
+```
+
+将信号`sig`发送给进程`pid`。`sig`取值即为上面提及的信号编号，`pid`取值如下：
+
+```
+pid>0	信号发送给进程PID为pid的进程
+pid=0	信号发送给本进程内的其他进程
+pid=-1	信号发送给除init进程外的所有进程，但发送者需要拥有对目标发送信号的权限
+pid<-1	信号发送给组ID为-pid的进程组中的所有成员
+```
+
+信号取值都大于0，如果`sig`参数传入0，则`kill`不发送任何信号。
+
+执行成功返回0，失败返回-1并设置errno，errno取值如下：
+
+```
+EINVAL:无效信号
+EPERM:该进程无权限发送信号给目标进程
+ESRCH:目标进程或进程组不存在
+```
+
+使用示例：
+
+```c
+//杀死自己
+kill(getpid(),9);
+//子进程杀死父进程
+kill(getppid(),10);
+```
+
+### 信号处理
+
+#### `signal`
+
+`signal`系统调用用于指定当捕获到信号时对信号做出何种反应。
+
+```c
+#include<signal.h>
+_sighandler_t signal(int sig, _sighandler_t _handler);
+```
+
+- `sig`：指定要捕获的信号类型。
+
+- `_handler`：指定捕获到信号后要执行的函数，`_sighandler_t`是函数指针类型，原型定义：
+
+  ```c
+  #include<signal.h>
+  typedef void(*_sighandler_t)(int);
+  ```
+
+`signal`中的信号处理函数是由系统内核在捕获到指定类型的信号后调用的，内核会将捕获到的信号编号作为参数传入信号处理函数，以方便信号处理函数可以对不同类型的信号产生不同的行为。
+
+执行成功返回一个函数指针，其类型同样为`_sighandler_t`，是前一次调用`signal`时传入的函数指针，而当此次调用是首次调用时则返回信号`sig`对应的默认处理函数指针`SIG_DEF`。
+
+执行失败返回`SIG_ERR`，设置errno。
