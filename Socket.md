@@ -1100,3 +1100,57 @@ _sighandler_t signal(int sig, _sighandler_t _handler);
 执行成功返回一个函数指针，其类型同样为`_sighandler_t`，是前一次调用`signal`时传入的函数指针，而当此次调用是首次调用时则返回信号`sig`对应的默认处理函数指针`SIG_DEF`。
 
 执行失败返回`SIG_ERR`，设置errno。
+
+#### `sigaction`
+
+`sigaction`功能与`signal`相同，都是捕获信号并对信号做出反应。但是`sigaction`功能更加强大，同样参数更加复杂。
+
+```c
+#include<signal.h>
+int sigaction(int sig, const struct sigaction* act, struct sigaction* oact);
+```
+
+- `sig`：指定要捕获的信号类型。
+- `act`：指定对捕获到的信号的处理方式。
+- `oact`：上一次函数调用对该信号的处理方式，一般指定为NULL。
+
+其中`sigaction`结构体类型定义如下：
+
+```c
+struct sigaction
+{
+    #ifdef __USE_POSIX 199309
+    union
+    {
+        _sighandler_t sa_handler;
+        void (*sa_sigaction)(int, siginfo_t*, void*);
+    }
+    _sigaction_handler;
+    #define sa_handler __sigaction_handler.sa_handler
+    #define sa_sigaction __sigaction_handler.sa_sigaction
+    #else
+    _sighandler_t sa_handler;
+    #endif
+    _sigset_t sa_mask;
+    int as_flags;
+    void (*sa_restorer)(void);
+};
+```
+
+- `sa_handler`：函数指针，指定信号处理函数。
+
+- `sa_sigaction`：函数指针，指定信号处理函数。
+
+- `sa_mask`：信号集`sigset_t`类型，设置进程的信号掩码，以在信号处理函数执行期间临时屏蔽一些信号，将要屏蔽的信号添加进信号集即可。当处理函数执行完毕后，临时信号屏蔽会自动解除，同时此信号集至少有一个信号，即捕获的信号。
+
+- `sa_flags`：指定捕获到信号后的处理行为，其可选值如下：
+
+  ```
+  0：使用sa_handler，默认
+  SA_SIGINFO：使用sa_sigaction作为信号处理函数而不是默认的sa_handler
+  SA_INTERRUPT：中断系统调用
+  ```
+
+- `sa_restorer`：已废弃，不要使用。
+
+函数执行成功返回0，失败返回-1并设置errno。
