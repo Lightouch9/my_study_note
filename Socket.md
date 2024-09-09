@@ -1031,7 +1031,67 @@ SIGKILL:无条件杀死进程
 SIGSTOP:无条件暂停进程
 ```
 
+## 信号集
 
+在Linux中信号集表示一组信号的集合，数据类型为`sigset_t`，可以存储多个信号的状态。
+
+`sig_set`定义：
+
+```c
+#include<bits/sigset.h>
+#define _SIGSET_NWORDS (1024/(8*sizeof(unsigned long int)))
+typedef struct
+{
+    unsigned long int __val[_SIGSET_NWORDS];
+}__sigset_t;
+```
+
+所以`sigset_t`本质是一个无符号长整型数组，其数组大小取决于系统中`unsigned long int`类型的大小。
+
+- 32位系统中，`unsigned long int`通常为32位，即4字节，则信号集数组大小为32个元素。
+- 64位系统中，`unsigned long int`通常为64位，即8字节，则信号集数组大小位16个元素。
+
+数组的每个元素的每个位表示一个信号，以64位系统中的`unsigned long int`为例，`sigset_t`内部数组共有16个元素，即数组大小为`16*64=1024`位(128字节)，每一个位都可以记录一个信号的状态。
+
+### 信号集操作函数
+
+```c
+#include<signal.h>
+//清空信号集，将所有信号的标志位设置为0
+int sigemptyset(sigset_t* _set);
+//设置所有信号，将所有信号的标志位设置为1
+int sigfillset(sigset_t* _set);
+//添加信号，将指定的信号(_signo)标志位设置为1
+int sigaddset(sigset_t* _set, int _signo);
+//删除信号，将指定信号(_signo)标志位设置为0
+int sigdelset(sigset_t* _set, int _signo);
+//判断是否在信号集内，返回指定信号(_signo)的标志位
+int sigismember(const sigset_t* _set, int _signo);
+```
+
+### 阻塞信号集
+
+进程控制块PCB中存储的重要信号集之一，用于控制当前进程应当阻塞的信号，当进程接收到一个信号，且此信号在该进程的阻塞信号集中(标志位为1)，则该进程不会立刻处理该信号，暂时保留，直到该信号被移出阻塞信号集(标志位为0)。
+
+注意此处的阻塞是指信号延迟处理，并不是丢弃信号，也不是阻止信号的产生。
+
+```c
+#include<signal.h>
+//阻塞信号集操作函数
+int sigprocmask(int _how, const sigset_t* _set, sigset_t* _oset);
+```
+
+- `_how`：指定对内核中的阻塞信号集的操作方式，取值如下
+  - `SIG_BLOCK`：将`_set`指定的信号集追加到阻塞信号集中
+  - `SIG_UNBLOCK`：解除`_set`指定的信号集中的信号的阻塞
+  - `SIG_SETMASK`：使用`_set`指定的信号集中的信号覆盖阻塞信号集
+
+- `_set`：指定用于操作的信号集数据
+- `_oset`：接受在此次修改之前的阻塞信号集的数据，可以指定为NULL
+
+执行成功返回0，失败返回-1并设置errno
+
+### 未决信号集
 
 ## 相关函数
 
