@@ -142,7 +142,7 @@ struct in6_addr
 };
 ```
 所有的专用socket地址类型以及通用socket地址类型`sockaddr_storage`在使用时需要**强制转换为通用socket地址类型`sockaddr`**，因为所有socket编程接口使用的地址参数类型都是`sockaddr`。
-# 套接字
+# 套接字Socket
 
 套接字创建，返回值是文件描述符，通过该描述符操作内核中的一块内存，用于网络通信。：
 
@@ -1247,3 +1247,57 @@ struct sigaction
 ### SIGCHLD
 
 当子进程退出、暂停或者从暂停中回复运行时，子进程会产生一个`SIGCHLD`信号发送给父进程，默认情况下父进程会忽略此信号，但是可以在父进程中捕获此信号来回收子进程的资源。
+
+### SIGALRM
+
+`SIGALRM`信号会在进程通过`alarm`或`setitimer`函数设置的定时器到期后，会向进程发送`SIGALRM`信号已通知进程定时器到期，这样进程就可以在指定的时间间隔后进行特定的操作。
+
+```c
+#include<unistd.h>
+unsigned int alarm(unsigned int seconds);
+```
+
+`seconds`参数指定倒计时时间，单位为秒，倒计时结束后会向进程发送`SIGALARM`信号。
+
+返回值为距离倒计时结束还剩多少秒，倒计时结束则返回0。
+
+对于`SIGALRM`信号，进程的默认处理动作是中断当前进程。
+
+```c
+#include<sys/time.h>
+int setitimer(int which, const struct itimerval* new_value, 
+              struct itimerval* old_value);
+```
+
+- `which`：指定定时器的计时方式，取值如下：
+
+```
+ITIMER_REAL：自然计时，计时时间计算方式，用户区+内核区+用户与内核切换耗时，产生信号为SIGALRM
+ITIMER_VIRTUAL：只计算程序在用户区运行的时间。产生信号SIGVTALRM
+ITIMER_PROF：只计算程序在内核区的运行时间，产生信号SIGPROF
+```
+
+- `new_value`：定时器的定时信息，传入参数
+- `old_value`：定时器上一次设置的定时信息，传出参数，可指定为NULL
+
+`itimerval`数据结构定义如下：
+
+```c
+struct itimerval
+{
+    //第一次触发定时器之后的时间间隔
+    struct timeval it_interval;
+    //第一次触发定时器的时长
+    struct timeval it_value;
+}
+
+//时间段数据类型
+struct timeval
+{
+    //秒
+    time_t tv_sec;
+    //微秒
+    suseconds_t tv_usec;
+}
+```
+
