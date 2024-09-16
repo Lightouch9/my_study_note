@@ -320,3 +320,107 @@ int semget(key_t key, int num_sems, int sem_flags);
   - 权限位：如0666，设置信号量集的权限，这些权限与文件权限类似，但解释不同
 
 ​	执行成功返回创建的信号量集的键值，失败返回-1.并设置errno。
+
+信号量集的数据类型为`semid_ds`，其定义如下：
+
+```c
+#include<sys/sem.h>
+//描述ipc对象的权限信息
+struct ipc_perm
+{
+    //创建信号量集时提供的键值
+    key_t key;
+    //所有者有效用户id
+    uid_t uid;
+    //所有者有效用户组id
+    gid_t gid;
+    //创建者有效用户id
+    uid_t cuid;
+    //创建者有效用户组id
+    gid_t cgid;
+    //权限模式
+    mode_t mode;
+}
+struct semid_ds
+{
+    //信号量集的操作权限和所有者信息
+    struct ipc_perm sem_perm;
+    //信号量集中信号量的数目
+    unsigned long int sem_nsems;
+    //最后一次调用semop的时间
+    time_t sem_otime;
+    //最后一次调用semctl的时间
+    time_t sem_ctime;
+}
+```
+
+`semget()`对信号集`semid_ds`的初始化操作如下：
+
+- 将`sem_perm.uid`所有者id和`sem_perm.cuid`创建者id设置为调用该进程的用户id
+- 将`sem_perm.gid`所有者用户组id和`sem_perm.cgid`创建者用户组id设置为调用进程的组id
+- 将`sem_perm.mode`的低9位设置为`sem_flags`的低9位
+- 将`sem_nsems`设置为`num_sems`
+- 将`sem_otime`设置位0
+- 将`sem_ctime`设置为当前的系统时间
+
+## semop
+
+`semop`用于操作信号量，即P、V操作，用于控制对临界资源的访问。
+
+```c
+#include<sys/sem.h>
+int semop(int sem_id, struct sembuf* sem_ops, size_t num_sem_ops);
+```
+
+- `sem_id`是通过`semget`调用返回的信号量集标识符，用于指定被操作的信号量集。
+
+- `sem_ops`指向一个`sembuf`类型的数组，用于指定对信号量的操作
+
+  ```c
+  struct sembuf
+  {
+      unsigned short int sem_num;	//信号量集中信号量的编号，从0开始
+      short int sem_op;	//执行的操作，增、减、等待
+      short int sem_flg;	//操作标志，SEM_UNDO、IPC_NOWAIT
+  }
+  ```
+
+  - `sem_op`指定操作类型，一般与`sem_flg`操作标志共同控制对于信号量的操作
+
+    - `sem_op`大于0，则`semop`将被操作的信号量的值`semval`增加`sem_op`，该操作需要调用进程拥有对于被操作信号量的写权限。
+
+      如果此时`sem_flg`为`SEM_UNDO`，则系统会更新进程的`semadj`变量(用于跟踪进程对于信号量的修改情况)
+
+    - `sem_op`等于0，则表示是等待操作，该操作要求调用进程拥有对于被操作信号量的读权限，如果信号量的值`semval`为0，则调用成功立即返回。
+
+      如果`semval`不为0，则
+
+      - 如果`sem_flg`为`IPC_NOWAIT`，即指定非阻塞，`semop`会立即返回一个错误，并设置errno为`EAGAIN`。
+      - 如果未指定`IPC_NOWAIT`，则`semzcnt`值加1，进程进入休眠，唤醒条件为：
+        - `semval`变为0，然后`semzcnt`减1
+        - 所操作的信号量所在的信号量集被移除，`semop`调用失败返回，设置errno为`EIDRM`
+        - 此次调用被信号中断，`semop`调用失败返回，设置errno为`EINTR`，同时`semzcnt`减1
+
+    - `sem_op`小于0，则进行减操作，即进行信号量的获取，需要拥有对于信号量的写权限
+
+      - `semval`大于`sem_op`的绝对值，则`semop`操作成功，将`semval`减去`sem_op`的绝对值，获取到了信号量。
+
+        如果`sem_flg`为`SEM_UNDO`，则系统将更新进程的`semadj`变量
+
+      - `semval`小于`sem_op`的绝对值，则
+
+        - `sem_flg`为`IPC_NOWAIT`，则立即返回一个错误，设置errno为`EAGAIN`
+
+        - `sem_flg`不为`IPC_WAIT`，则`semncnt`加1，进程进入休眠，唤醒条件为：
+
+          - `sem_val`大于等于`sem_op`的绝对值，则`semncnt`减1，`semval`减去`sem_op`的绝对值。
+
+            如果`SEM_UNDO`被设置，则系统更新进程的`semadj`变量。
+
+          - 所操作的信号量所在的信号量集被移除，`semop`调用失败返回，设置errno为`EIDRM`
+
+          - 此次调用被信号中断，`semop`调用失败返回，设置errno为`EINTR`，同时`semncnt`减1
+
+- 参数`num_sem_ops`指定要执行的操作的个数，即要执行`sem_ops`数组的元素的个数，并且执行顺序按照数组顺序依次执行，且为原子操作。
+
+执行成功返回0，失败返回-1并设置errno，如果失败，`sem_ops`数组的所有操作都不会执行。
