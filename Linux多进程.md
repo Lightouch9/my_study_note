@@ -424,3 +424,68 @@ int semop(int sem_id, struct sembuf* sem_ops, size_t num_sem_ops);
 - 参数`num_sem_ops`指定要执行的操作的个数，即要执行`sem_ops`数组的元素的个数，并且执行顺序按照数组顺序依次执行，且为原子操作。
 
 执行成功返回0，失败返回-1并设置errno，如果失败，`sem_ops`数组的所有操作都不会执行。
+
+## semctl
+
+`semctl`用于对信号量进行直接控制，如对信号量集中的信号进行查询、设置、删除等操作。
+
+```c
+#include<sys/sem.h>
+int semctl(int sem_id, int sem_num, int command, ...);
+```
+
+- `sem_id`：由`semget`返回的信号量集标识符，用于指定要操作的信号量集
+
+- `sem_num`：指定要操作的信号量在信号量集中的索引。
+
+- `command`：指定要执行的命令，该命令可能会用到第4个参数
+
+- `...`：补充`command`可能用到的参数，虽然此参数可以由用户定义，但头文件`sys/sem.h`中给出了推荐数据类型：
+
+  ```c
+  #include<sys/sem.h>
+  union semun
+  {
+      int val;	//用于SETVAL命令
+      struct semid_ds* buf;	//用于IPC_STAT和IPC_SET命令
+      unsigned short* array;	//用于GETALL和SETALL命令
+      struct seminfo* __buf;	//用于IPC_INFO命令
+  };
+  
+  struct seminfo
+  {
+      int semmap;
+      int semmni;
+      int semmns;
+      int semmsl;
+      int semopm;
+      int semume;
+      int semusz;
+      int semvmx;
+      int semaem;
+  };
+  ```
+
+  
+
+`semctl`可以执行的命令，即`command`可取值如下：
+
+|    命令    |                             含义                             |  成功调用返回值   |
+| :--------: | :----------------------------------------------------------: | :---------------: |
+| `IPC_STAT` |       获取信号量集的状态信息，将其复制到`semun.buf`中        |         0         |
+| `IPC_SET`  | 设置信号量集的状态信息，使用用户提供的`semid_ds`更新内核中的信号量集数据结构，并更新内核的`semid_ds.sem_ctime` |         0         |
+| `IPC_RMID` |         立即移除信号量集，并唤醒等待该信号量集的进程         |         0         |
+|  `GETVAL`  |     获取信号量集中指定的信号量的值，保存至`semun.array`      |         0         |
+|  `SETVAL`  | 设置信号量集中指定信号的值为`semun.val`，并更新内核中的`semid_ds.sem_ctime` |         0         |
+|  `GETPID`  |                   获取指定信号量的`sempid`                   | 信号量的`sempid`  |
+| `GETNCNT`  |                    获取信号量的`semncnt`                     | 信号量的`semncnt` |
+| `GETZCNT`  |                    获取信号量的`semzcnt`                     | 信号量的`semzcnt` |
+|            |                                                              |                   |
+|            |                                                              |                   |
+|            |                                                              |                   |
+|            |                                                              |                   |
+|            |                                                              |                   |
+
+`GETNCNT`、`GETPID`、`GETVAL`、`GETZCNT`、`SETVAL`操作的是单个信号量，其余的是操作的整个信号量集，此时`sem_num`参数会被忽略。
+
+执行成功返回值取决于`command`参数，失败返回-1，并设置errno。
