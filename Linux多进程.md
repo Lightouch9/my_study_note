@@ -367,6 +367,17 @@ struct semid_ds
 
 `semop`用于操作信号量，即P、V操作，用于控制对临界资源的访问。
 
+首先是与`semop`相关联的内核中与信号量有关的变量：
+
+```c
+unsigned short semval;	//信号量的值
+unsigned short semzcnt;	//等待信号量的值变为0的进程的数量
+unsigned short semncnt;	//等待信号量的值增加的进程数量
+pid_t sempid;	//最后一次执行semop的进程id
+```
+
+
+
 ```c
 #include<sys/sem.h>
 int semop(int sem_id, struct sembuf* sem_ops, size_t num_sem_ops);
