@@ -500,3 +500,124 @@ int semctl(int sem_id, int sem_num, int command, ...);
 `GETNCNT`、`GETPID`、`GETVAL`、`GETZCNT`、`SETVAL`操作的是单个信号量，其余的是操作的整个信号量集，此时`sem_num`参数会被忽略。
 
 执行成功返回值取决于`command`参数，失败返回-1，并设置errno。
+
+# 共享内存
+
+共享内存是所有进程间通信的方式中效率最高的，共享内存不属于任何进程，也不受与其关联的进程的生命周期影响，不涉及进程之间的任何数据传输。
+
+但是因为共享内存操作默认是不阻塞的，所以需要其他手段同步多个进程对于共享内存的访问，否则容易产生竞态条件，造成数据混乱。
+
+接下来介绍有关共享内存的4个系统调用：
+
+## `shmget`
+
+该系统调用用于创建一段新的共享内存，或者打开一段已经存在的共享内存。
+
+```c
+#include<sys/shm.h>
+int shmget(key_t key, size_t size, int shmflg);
+```
+
+- `key`：同`semget`，该参数是一个键值，标识唯一一段共享内存，用于指定创建或打开的共享内存的键值。
+- `size`：仅在创建共享内存时生效，用于指定创建的共享内存的大小，单位为字节，打开共享内存时可以指定为0。
+- `shmflg`：创建共享内存时指定的属性，取值同`semget`的`sem_flags`参数，但额外支持两个值，`SHM_HUGETLB`和`SHM_NORESERVE`。
+  - `SHM_HUGETLB`：系统将使用“大页面”来为共享内存分配空间。
+  - `SHM_NORESERVE`：不为共享内存保留交换分区(swap分区)，当物理内存空间不足时对该共享内存执行写操作将触发`SIGSEGV`信号。
+
+执行成功返回共享内存的标识符，失败返回-1，指定errno。
+
+该调用创建的共享内存内部所有字节都将初始化为0，相关联的内核数据结构`shmid_ds`将被创建，用于管理每段共享内存的信息。
+
+```c
+struct shmid_ds
+{
+    struct ipc_perm shm_perm;	//共享内存的操作权限信息
+    size_t shm_segsz;	//共享内存大小，单位为字节
+    __time_t shm_atime;	//对此共享内存最后一次调用shmat的时间
+    __time_t shm_dtime;	//对此共享内存最后一次调用shmdt的时间
+    __time_t shm_ctime;	//对此共享内存最后一次调用shmctl的时间
+    __pid_t shm_cpid;	//创建该共享内存的进程的id
+    __pid_t shm_lpid;	//对该共享内存最后一次执行shmat或shmdt的进程的id
+    shmatt_t shm_nattach;	//当前关联到此共享内存的进程的数量
+};
+```
+
+`shmget`对`shmid_ds`的初始化操作如下：
+
+- `shm_perm.cuid`和`shm_perm.uid`设置为调用进程的用户id
+- 将`shm_perm.cgid`和`shm_perm.gid`设置为调用进程的组id
+- 将`shm_perm.mode`的低9位设置位`shmflg`参数的低9位
+- 将`shm_segsz`设置为`size`
+- 将`shm_lpid`、`shm_nattach`、`shm_atime`、`shm_dtime`设置为0
+- 将`shm_ctime`设置为当前时间
+
+## `shmat`
+
+该调用用于将创建或者打开的共享内存关联到当前进程的地址空间中，这样才能得到共享内存的起始地址，进行数据的读写。
+
+```c
+#include<sys/shm.h>
+void* shmat(int shm_id, const void* shm_addr, int shmflg);
+```
+
+- `shm_id`：要关联的共享内存标识符
+- `shm_addr`：指定将共享内存关联到进程的哪块地址空间，同时也会受`shmflg`参数的影响，一般设置为NULL，此时地址由内核决定(推荐)
+- `shmflg`：标志位：
+  - `SHM_RDONLY`：进程仅可只读共享内存
+  - `SHM_REMAP`：如果地址`shmaddr`已经被关联到一段共享内存，则重新关联
+  - 0：读写权限，可读可写
+  - 如果`shm_addr`非空，且未设置`SHM_RND`标志位，则共享内存被关联到`shm_addr`指定的地址
+
+执行成功返回被关联到的地址，失败返回`(void*)-1`并设置errno
+
+执行成功时内核中的`shmid_ds`中的部分字段会被修改：
+
+- `shm_nattach`加1
+- `shm_lpid`设置为调用进程的进程id
+- `shm_atime`设置为当前时间
+
+## `shmdt`
+
+该调用用于将关联的共享内存解除关联。
+
+```c
+#include<sys/shm.h>
+void* shmat(const void* shm_addr);
+```
+
+`shm_addr`是`shmat()`的返回值，共享内存的起始地址。
+
+执行成功返回0，失败返回-1并设置errno
+
+执行成功会修改内核中的`shmid_ds`的部分字段：
+
+- `shm_nattach`减1
+- `shm_lpid`设置为调用进程的id
+- `shm_dtime`设置为当前时间
+
+## `shmctl`
+
+该调用用于控制共享内存的一些属性，可以设置、获取共享内存的状态。
+
+```c
+#include<sys/shm.h>
+int shmctl(int shm_id, int command, struct shmid_ds* buf);
+```
+
+- `shm_id`：共享内存标识符
+- `command`：指定要执行的命令
+
+|    命令    |                     含义                      | 成功返回值 |
+| :--------: | :-------------------------------------------: | :--------: |
+| `IPC_STAT` |   获取当前共享内存的状态信息，复制到`buf`中   |     0      |
+| `IPC_SET`  | 设置共享内存的状态，将`buf`的数据设置到内核中 |     0      |
+| `IPC_RMID` |           将共享内存设置为删除状态            |     0      |
+|            |                                               |            |
+|            |                                               |            |
+|            |                                               |            |
+|            |                                               |            |
+|            |                                               |            |
+
+删除状态并不是立即删除，而是当所有关联到此共享内存的进程断开关联后才删除。
+
+执行成功返回值取决于`command`执行的命令，失败返回-1并设置errno
