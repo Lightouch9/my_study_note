@@ -621,3 +621,44 @@ int shmctl(int shm_id, int command, struct shmid_ds* buf);
 删除状态并不是立即删除，而是当所有关联到此共享内存的进程断开关联后才删除。
 
 执行成功返回值取决于`command`执行的命令，失败返回-1并设置errno
+
+# 消息队列
+
+消息队列是进程间传递二进制块数据的一种方式。
+
+## `msgget`
+
+创建或获取消息队列
+
+```c
+#include<sys/msg.h>
+int msgget(ket_t, int msgflg);
+```
+
+## `msgsnd`
+
+将一条消息添加进消息队列中
+
+```c
+#include<sys/msg.h>
+int msgsnd(int msqid, const void* msg_ptr, size_t msg_sz, int msgflg);
+```
+
+## `msgrcv`
+
+从消息队列中获取消息
+
+```c
+#include<sys/msg.h>
+int msgrcv(int msqid, void* msg_ptr, size_t msg_sz, long int msgtype, int msgflg);
+```
+
+## `msgctl`
+
+控制消息队列的某些属性
+
+```c
+#include<sys/msg.h>
+int msgctl(int msqid, int command, struct msqid_ds* buf);
+```
+
