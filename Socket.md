@@ -150,6 +150,21 @@ struct in6_addr
 int socket(int domain, int type, int protocol);
 ```
 
+- `domain`：使用的底层协议族，取值：
+  - `TCP/IP`协议族
+    - `PF_INET`/`AF_INET`：使用`ipv4`格式的ip地址
+    - `PF_INET6`/`AF_INET6`：使用`ipv6`格式的ip地址
+  - `UNIX`本地域协议族
+    - `PF_UNIX`
+- `type`：指定服务类型，取值：
+  - `SOCK_STREAM`：使用流式传输协议
+  - `SOCK_DGRAM`：使用数据报传输协议
+- `protocol`：在前两个参数构成的协议集合下选择一个具体的协议，一般使用默认值0
+  - `type`为`SOCK_STREAM`则是TCP协议
+  - `type`为`SOCK_DGRAM`则是UDP协议
+
+调用成功返回`socket`文件描述符，失败返回-1并设置errno。
+
 将文件描述符与本地ip与端口绑定：
 
 ```c
