@@ -142,7 +142,7 @@ struct in6_addr
 };
 ```
 所有的专用socket地址类型以及通用socket地址类型`sockaddr_storage`在使用时需要**强制转换为通用socket地址类型`sockaddr`**，因为所有socket编程接口使用的地址参数类型都是`sockaddr`。
-# 套接字Socket
+# 套接字Socket相关函数
 
 套接字创建，返回值是文件描述符，通过该描述符操作内核中的一块内存，用于网络通信。：
 
@@ -177,6 +177,11 @@ int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 int listen(int sockfd, int backlog);
 ```
 
+- `sockfd`：设置被监听的socket文件描述符
+- `backlog`：提示内核监听队列的最大长度，即同时处理的最大连接请求，最大值为128，典型值为5
+
+执行成功返回0，失败返回-1并设置errno。
+
 等待并接受连接：
 
 ```c
@@ -203,7 +208,28 @@ ssize_t send(int fd, const void *buf, size_t len, int flags);
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 ```
 
+## socket选项
+
+以下两个系统调用用于读取和设置`socket`文件描述符的属性。
+
+```c
+#include<sys/socket.h>
+//获取socket的属性
+int getsockopt(int sockfd, int level, int option_name, void* option_value, socklen_t* restrict option_len);
+//设置socket的属性
+int setsockopt(int sockfd, int level, int option_name, const void* option_value, socklen_t option_len);
+```
+
+- `sockfd`：指定要操作的`socket`文件描述符。
+- `level`：指定要操作的协议的选项或属性，如ipv4、ipv6、tcp等。
+- `option_name`：指定选项的名字。
+- `option_value`：被操作选项的值，获取属性中则是传出参数，设置属性中则是对应选项被设置 新的值。
+- `option_len`：被操作选项的长度。
+
+执行成功返回0，失败返回-1并设置errno。
+
 # 网络信息API
+
 ```c
 #include<netdb.h>
 //根据主机名获取主机完整信息
