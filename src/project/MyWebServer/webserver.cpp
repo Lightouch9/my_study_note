@@ -23,6 +23,15 @@ void WebServer::eventListen()
     address.sin_family=AF_INET; //设置地址结构的协议族
     address.sin_addr.s_addr=htonl(INADDR_ANY);  //设置绑定本地任意ip
     address.sin_port=htons(m_port); //绑定端口
+    //设置地址重用选项
+    int reuse=1;
+    setsockopt(m_listenfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+    //绑定地址
+    ret=bind(m_listenfd, (struct sockaddr*)&address, sizeof(address));
+    assert(ret>=0);
+    //设置监听
+    ret=listen(m_listenfd, 5);
+    assert(ret>=0);
 
 }
 //服务器事件循环的开始
