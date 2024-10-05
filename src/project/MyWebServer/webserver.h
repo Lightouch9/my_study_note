@@ -3,6 +3,9 @@
 #define WEBSERVER_H
 #include<assert.h>
 #include<netinet/in.h>
+#include"utils.h"
+//全局变量
+const int MAX_EVENT_NUMBER = 10000; //最大就绪事件数量
 class WebServer
 {
     public:
@@ -25,5 +28,9 @@ class WebServer
         //成员变量
         int m_listenfd;   //监听套接字
         int m_port; //监听套接字的端口
+        int m_epollfd;  //epoll文件描述符
+        int m_trig_mode;  //事件触发模式
+        int m_listen_trig_mode; //监听文件描述符的事件触发模式
+        Utils utils;    //工具类
 };
 #endif

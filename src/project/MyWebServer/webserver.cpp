@@ -32,6 +32,15 @@ void WebServer::eventListen()
     //设置监听
     ret=listen(m_listenfd, 5);
     assert(ret>=0);
+    //初始化工具类
+    utils.init();
+
+    //创建epoll内核事件表
+    epoll_event events[MAX_EVENT_NUMBER];   //创建存储就绪事件的数组
+    m_epollfd=epoll_create(5);  //创建epoll文件描述符
+    assert(m_epollfd!=-1);
+    //将监听套接字添加进epoll监听的内核事件表中
+    utils.addfd(m_epollfd, m_listenfd, false, m_listen_trig_mode);
 
 }
 //服务器事件循环的开始
