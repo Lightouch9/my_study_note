@@ -38,6 +38,7 @@ char* inet_ntoa(struct in_addr in);
 `inet_addr`用于将点分十进制字符串的ipv4（仅限ipv4）地址转换为网络字节序的ipv4地址，执行失败会返回`INADDR_NONE`。
 `inet_aton`功能与`inet_addr`相同，但是会将转换的结果保存在参数`inp`指向的地址结构中。执行成功返回1，失败返回0。
 `inet_ntoa`用于将网络字节序的ipv4（仅限ipv4）地址转换为点分十进制字符串的ipv4地址，但是该函数是**不可重入**的，其函数内部使用一个静态变量存储转换结果，函数返回值指向该静态内存。
+
 ```c
 char*szValue1=inet_ntoa("1.2.3.4"); 
 char*szValue2=inet_ntoa("10.194.71.60"); 
@@ -463,7 +464,10 @@ struct epoll_event
 	epoll_data_t data;
 }
 ```
+- `events`：描述事件类型，与`poll`基本相同，描述`epoll`事件类型的宏在`poll`对应的事件类型前加`E`，如可读事件`EPOLLIN`，此外`epoll`有两个额外的事件类型`EPOLLET`和`EPOLLONESHOT`，后面介绍。
+
 `epoll_ctl`执行成功返回0，失败返回-1并设置errno。
+
 ### epoll_wait
 在一段指定的超时时间内返回就绪的文件描述符。
 ```c
@@ -478,6 +482,10 @@ int epoll_wait(int epfd, struct epoll_event* events, int maxevents,
 ### 工作模式LT与ET
 - LT(Level Trigger)，默认的工作模式，在此工作模式下当`epoll_wait`检测到文件描述符就绪并将其通知应用程序后，除非应用程序处理该事件，否则每次调用`epoll_wait`时都会向应用程序返回就绪的文件描述符。
 - ET(Edge Trigger)，此工作模式下，当检测到事件发生时只会通知应用程序一次，这要求应用程序必须立即处理该事件，因为后面不再通知该事件。同时要使用**非阻塞式**I/O操作。所以ET模式相对于LT模式能够降低同一个事件被`epoll`重复触发的次数，提高效率。
+
+### `EPOLLONESHOT`事件
+
+该事件用于确保一个socket连接在任意时刻只会被一个线程处理。注册了`EPOLLONESHOT`事件的文件描述符，操作系统最多触发该文件描述符上注册的一个可读、可写或异常事件，且只触发一次。这样一个线程正在处理这个文件描述符时，其他线程是无法操作该文件描述符的。同样的注册了该事件的文件描述符在被一个线程处理完后应该重置此文件描述符的`EPOLLONESHOT`事件以确保此文件描述符有新的事件时能够被正常触发和被处理。
 
 ## 3个I/O复用函数的对比
 
