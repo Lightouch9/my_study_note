@@ -31,6 +31,7 @@ class WebServer
         int m_epollfd;  //epoll文件描述符
         int m_trig_mode;  //事件触发模式
         int m_listen_trig_mode; //监听文件描述符的事件触发模式
+        int m_pipefd[2];  //管道
         Utils utils;    //工具类
 };
 #endif

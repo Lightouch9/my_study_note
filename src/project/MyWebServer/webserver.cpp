@@ -17,7 +17,7 @@ void WebServer::eventListen()
     assert(m_listenfd>=0);
 
     //初始化地址结构
-    int ret=0;
+    int ret=0;  //接收返回值的变量
     struct sockaddr_in address;
     bzero(&address, sizeof(address));   //将address内清空，确保这块内存是干净的
     address.sin_family=AF_INET; //设置地址结构的协议族
@@ -41,6 +41,13 @@ void WebServer::eventListen()
     assert(m_epollfd!=-1);
     //将监听套接字添加进epoll监听的内核事件表中
     utils.addfd(m_epollfd, m_listenfd, false, m_listen_trig_mode);
+    //创建双向管道用于信号处理
+    ret=socketpair(PF_UNIX, SOCK_STREAM, 0, m_pipefd);
+    assert(ret>=0);
+    utils.setnonblocking(m_pipefd[1]);  //将写端设置为非阻塞
+    utils.addfd(m_epollfd, m_pipefd[0], false, 0);  //添加到epoll监听可读事件
+    utils.addsig(SIGPIPR, SIG_IGN); //忽略SIGPIPE信号
+    
 
 }
 //服务器事件循环的开始
