@@ -145,6 +145,8 @@ struct in6_addr
 所有的专用socket地址类型以及通用socket地址类型`sockaddr_storage`在使用时需要**强制转换为通用socket地址类型`sockaddr`**，因为所有socket编程接口使用的地址参数类型都是`sockaddr`。
 # 套接字Socket相关函数
 
+## 创建套接字
+
 套接字创建，返回值是文件描述符，通过该描述符操作内核中的一块内存，用于网络通信。：
 
 ```c
@@ -156,7 +158,7 @@ int socket(int domain, int type, int protocol);
     - `PF_INET`/`AF_INET`：使用`ipv4`格式的ip地址
     - `PF_INET6`/`AF_INET6`：使用`ipv6`格式的ip地址
   - `UNIX`本地域协议族
-    - `PF_UNIX`
+    - `PF_UNIX`/`AF_UNIX`
 - `type`：指定服务类型，取值：
   - `SOCK_STREAM`：使用流式传输协议
   - `SOCK_DGRAM`：使用数据报传输协议
@@ -166,13 +168,13 @@ int socket(int domain, int type, int protocol);
 
 调用成功返回`socket`文件描述符，失败返回-1并设置errno。
 
-将文件描述符与本地ip与端口绑定：
+## 将文件描述符与本地ip与端口绑定
 
 ```c
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 ```
 
-设置监听：
+## 设置监听
 
 ```c
 int listen(int sockfd, int backlog);
@@ -183,33 +185,46 @@ int listen(int sockfd, int backlog);
 
 执行成功返回0，失败返回-1并设置errno。
 
-等待并接受连接：
+## 等待并接受连接
 
 ```c
 int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 ```
 
-接收数据：
+## 接收数据
 
 ```c
 ssize_t read(int sockfd, void *buf, size_t size);
 ssize_t recv(int sockfd, void *buf, size_t size, int flags);
 ```
 
-发送数据：
+## 发送数据
 
 ```c
 ssize_t write(int fd, const void *buf, size_t len);
 ssize_t send(int fd, const void *buf, size_t len, int flags);
 ```
 
-客户端发起连接请求：
+## 客户端发起连接请求
 
 ```c
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 ```
 
-## socket选项
+## 创建双向管道
+
+```c
+#include<sys/types.h>
+#include<sys/socket.h>
+int socketpair(int domain, int type, int protocol, int fd[2]);
+```
+
+- `domain`、`type`、`protocol`参数含义同`socket()`的同名参数，但是`domain`只能使用本地域协议族`AF_UNIX`。
+- `fd`含义同`pipe()`的同名参数，但与`pipe()`创建的管道不同，每个文件描述符都是可读可写的，即双向管道。
+
+执行成功返回0，失败返回-1并设置errno
+
+## socket选项的获取与设置
 
 以下两个系统调用用于读取和设置`socket`文件描述符的属性。
 
@@ -309,7 +324,29 @@ file control，提供对文件描述符的各种控制操作
 #include<fcntl.h>
 int fcntl(int fd, int cmd,...);
 ```
+- `fd`：被操作的文件描述符
+
+- `cmd`：操作类型
+
+- `...`：可选参数`arg`，进行补充
+
+  支持操作如下：
+
+  - 复制文件描述符
+    - `F_DUPFD`：创建新的一个文件描述符，值大于等于`arg`
+      - `arg`：`long`类型
+      - 成功返回新文件描述符的值
+    - `F_DUPFD_CLOEXEC`：
+  - 获取文件描述符的状态标志
+    - `F_GETFL`：获取`fd`的状态标志和访问模式
+      - 成功返回`fd` 的状态标志
+  - 设置文件描述符的状态标志
+    - `F_SETFL`：设置`fd`的文件描述符的状态标志，但访问模式标志无法修改
+      - `arg`：`long`类型
+      - 执行成功返回0
+
 # 其他
+
 ## 改变工作目录和根目录
 获取当前工作目录和改变工作目录
 ```c
