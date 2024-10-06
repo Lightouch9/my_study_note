@@ -13,6 +13,8 @@ class Utils
         int setnonblocking(int fd);
         //向epoll内核事件表中添加事件
         void addfd(int epollfd, int fd, bool is_one_shot, int trig_mode);
+        //设置信号处理行为
+        void addsig(int sig, void(handler)(int), bool restart);
 };
 
 
