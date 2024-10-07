@@ -1277,7 +1277,7 @@ int sigaction(int sig, const struct sigaction* act, struct sigaction* oact);
 
 - `sig`：指定要捕获的信号类型。
 - `act`：指定对捕获到的信号的处理方式。
-- `oact`：上一次函数调用对该信号的处理方式，一般指定为NULL。
+- `oact`：传出参数，上一次函数调用对该信号的处理方式，一般指定为NULL。
 
 其中`sigaction`结构体类型定义如下：
 
@@ -1314,6 +1314,7 @@ struct sigaction
   0：使用sa_handler，默认
   SA_SIGINFO：使用sa_sigaction作为信号处理函数而不是默认的sa_handler
   SA_INTERRUPT：中断系统调用
+  SA_RESTART：重新调用被该信号终止的系统调用，而不是返回错误
   ```
 
 - `sa_restorer`：已废弃，不要使用。
