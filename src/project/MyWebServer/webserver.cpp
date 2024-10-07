@@ -34,6 +34,9 @@ void WebServer::eventListen()
     assert(ret>=0);
     //初始化工具类
     utils.init();
+    //向工具类传入管道和epoll文件描述符方便使用
+    utils.m_pipefd=m_pipefd;
+    utils.m_epollfd=m_epollfd;
 
     //创建epoll内核事件表
     epoll_event events[MAX_EVENT_NUMBER];   //创建存储就绪事件的数组
@@ -47,8 +50,22 @@ void WebServer::eventListen()
     utils.setnonblocking(m_pipefd[1]);  //将写端设置为非阻塞
     utils.addfd(m_epollfd, m_pipefd[0], false, 0);  //添加到epoll监听可读事件
     utils.addsig(SIGPIPR, SIG_IGN); //忽略SIGPIPE信号
+    utils.addsig(SIGALRM, utils.sig_handler, false);    //设置定时器到期信号处理函数
+    utils.addsig(SIGTERM, utils.sig_handler, false);    //设置终止信号处理函数
     
+    alarm(TIMESLOT);    //设置定时器，定时处理其他到期的定时器
 
 }
 //服务器事件循环的开始
-void WebServer::eventLoop(){}
+void WebServer::eventLoop()
+{
+    //初始化超时标志与服务器停止标志    局部变量
+    bool timeout=false;
+    bool stop_server=false;
+    //核心事件监听循环
+    while (!stop_server)
+    {
+        
+    }
+    
+}

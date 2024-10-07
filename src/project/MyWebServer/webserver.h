@@ -6,6 +6,7 @@
 #include"utils.h"
 //全局变量
 const int MAX_EVENT_NUMBER = 10000; //最大就绪事件数量
+const int TIMESLOT = 5; //最小超时单位
 class WebServer
 {
     public:
