@@ -9,6 +9,33 @@ WebServer::~WebServer(){}
 void WebServer::init(){}
 //线程池的创建与初始化
 void WebServer::thread_pool(){}
+//为客户端的连接初始化定时器
+void WebServer::timer(int connfd, struct sockaddr_in client_addr)
+{
+    users.init(connfd, client_addr, )   //初始化客户端连接类
+    //初始化client_data数据
+}
+//处理新的客户端连接请求
+bool WebServer::client_conn_requ()
+{
+    struct sockaddr_in client_addr; //创建存储客户端地址信息的变量
+    socklen_t client_addr_len=sizeof(client_addr);  //存储客户端地址结构的大小
+    //LT模式
+    if(m_listen_trig_mode==0)
+    {
+        //接受连接
+        int connfd=accept(m_listenfd, (struct sockaddr*)&client_addr, &client_addr_len);
+        if(connfd<0)    //错误检查
+        {
+            return false;
+        }
+        //检查当前活动的用户数量是否超出限制
+        if(){}
+        //为新连接初始化定时器
+
+    }
+    //ET模式
+}
 //事件监听的创建与初始化
 void WebServer::eventListen()
 {
@@ -65,7 +92,22 @@ void WebServer::eventLoop()
     //核心事件监听循环
     while (!stop_server)
     {
-        
+        int num=epoll_wait(m_epollfd, events, MAX_EVENT_NUMBER, -1);    //阻塞式监听
+        if(num<0 && errno!=EINTR)   //错误检查
+        {
+            break;
+        }
+        //遍历就绪事件数组中的事件，对不同事件做出对应的处理
+        for(int i=0;i<number;i++)
+        {
+            int sockfd=events[i].data.fd;   //获取就绪事件的文件描述符
+            //根据事件类型进行处理
+            //新的客户连接，来自监听socket的是新的客户端连接请求
+            if(sockfd==m_listenfd)
+            {
+
+            }
+        }
     }
     
 }
