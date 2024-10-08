@@ -191,6 +191,14 @@ int listen(int sockfd, int backlog);
 int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 ```
 
+- `sockfd`：监听socket，即`listen()`的返回值。
+- `addr`：传出参数，存储接受连接的远端的socket地址。
+- `addrlen`：传出参数，存储`addr` 的地址长度
+
+执行成功后返回一个新的连接的socket，该socket唯一地标识这个被接受的连接，接下来服务器将通过该socket与客户端通信。
+
+执行失败返回-1，并设置errno。
+
 ## 接收数据
 
 ```c
@@ -462,7 +470,7 @@ int poll(struct pollfd* fds, nfds_t nfds, int timeout);
   typedef unsigned long int nfds_t;
   ```
 
-- `timeout`指定监听超时时间，单位毫秒，`timeout`为-1时，`poll`则在监听的时间发生前都将阻塞，`timeout`为0时，`poll` 将立即返回。
+- `timeout`指定监听超时时间，单位毫秒，`timeout`为-1时，`poll`则在监听的事件发生前都将阻塞，`timeout`为0时，`poll` 将立即返回。
 
 - `poll`的返回值同`select`。
 
@@ -503,6 +511,21 @@ struct epoll_event
 ```
 - `events`：描述事件类型，与`poll`基本相同，描述`epoll`事件类型的宏在`poll`对应的事件类型前加`E`，如可读事件`EPOLLIN`，此外`epoll`有两个额外的事件类型`EPOLLET`和`EPOLLONESHOT`，后面介绍。
 
+- `data`：存储用户数据，`epoll_data_t`类型如下：
+
+  ```c
+  typedf union epoll_data_t
+  {
+      void* ptr;
+      int fd;
+      uint32_t u32;
+      uint64_t u64;
+  }epoll_data_t;
+  ```
+
+  - `ptr`：指定与`fd`相关的用户数据
+  - `fd`：指定事件所从属的目标文件描述符，是最常用的
+
 `epoll_ctl`执行成功返回0，失败返回-1并设置errno。
 
 ### epoll_wait
@@ -515,6 +538,8 @@ int epoll_wait(int epfd, struct epoll_event* events, int maxevents,
 当`epoll_wait`检测到事件就会将**所有就绪的**事件从`epfd`指定的内核事件表中复制到`events`指向的用于存放就绪事件的数组中，这个数组只用于输出`epoll_wait`检测到的就绪事件。
 `maxevents`指定最多监听的事件的数量，即`events`数组的大小，
 `timeout`指定超时时间，与`poll`的`timeout`参数含义相同。
+
+执行成功返回就绪文件描述符的数量，失败返回-1并设置errno。
 
 ### 工作模式LT与ET
 - LT(Level Trigger)，默认的工作模式，在此工作模式下当`epoll_wait`检测到文件描述符就绪并将其通知应用程序后，除非应用程序处理该事件，否则每次调用`epoll_wait`时都会向应用程序返回就绪的文件描述符。
