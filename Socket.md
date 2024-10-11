@@ -1138,6 +1138,7 @@ man文档中有提及:
 ```
 The signals SIGKILL and SIGSTOP cannot be caught, blocked, or ignored.
 信号SIGKILL(9号信号),信号SIGSTOP(19号)不能被捕捉、阻塞或忽略。
+
 SIGKILL:无条件杀死进程
 SIGSTOP:无条件暂停进程
 ```
@@ -1160,7 +1161,7 @@ typedef struct
 所以`sigset_t`本质是一个无符号长整型数组，其数组大小取决于系统中`unsigned long int`类型的大小。
 
 - 32位系统中，`unsigned long int`通常为32位，即4字节，则信号集数组大小为32个元素。
-- 64位系统中，`unsigned long int`通常为64位，即8字节，则信号集数组大小位16个元素。
+- 64位系统中，`unsigned long int`通常为64位，即8字节，则信号集数组大小为16个元素。
 
 数组的每个元素的每个位表示一个信号，以64位系统中的`unsigned long int`为例，`sigset_t`内部数组共有16个元素，即数组大小为`16*64=1024`位(128字节)，每一个位都可以记录一个信号的状态。
 
