@@ -145,7 +145,7 @@ struct in6_addr
 所有的专用socket地址类型以及通用socket地址类型`sockaddr_storage`在使用时需要**强制转换为通用socket地址类型`sockaddr`**，因为所有socket编程接口使用的地址参数类型都是`sockaddr`。
 # 套接字Socket相关函数
 
-## 创建套接字
+## 创建套接字 socket
 
 套接字创建，返回值是文件描述符，通过该描述符操作内核中的一块内存，用于网络通信。：
 
@@ -168,13 +168,13 @@ int socket(int domain, int type, int protocol);
 
 调用成功返回`socket`文件描述符，失败返回-1并设置errno。
 
-## 将文件描述符与本地ip与端口绑定
+## 将文件描述符与本地ip与端口绑定 bind
 
 ```c
 int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 ```
 
-## 设置监听
+## 设置监听 listen
 
 ```c
 int listen(int sockfd, int backlog);
@@ -185,7 +185,7 @@ int listen(int sockfd, int backlog);
 
 执行成功返回0，失败返回-1并设置errno。
 
-## 等待并接受连接
+## 等待并接受连接 accept
 
 ```c
 int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
@@ -199,27 +199,27 @@ int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 
 执行失败返回-1，并设置errno。
 
-## 接收数据
+## 接收数据 read/recv
 
 ```c
 ssize_t read(int sockfd, void *buf, size_t size);
 ssize_t recv(int sockfd, void *buf, size_t size, int flags);
 ```
 
-## 发送数据
+## 发送数据 write/send
 
 ```c
 ssize_t write(int fd, const void *buf, size_t len);
 ssize_t send(int fd, const void *buf, size_t len, int flags);
 ```
 
-## 客户端发起连接请求
+## 客户端发起连接请求 connect
 
 ```c
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 ```
 
-## 创建双向管道
+## 创建双向管道 socketpair
 
 ```c
 #include<sys/types.h>
